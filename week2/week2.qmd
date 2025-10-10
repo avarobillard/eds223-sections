@@ -32,8 +32,86 @@ birds <- read_csv(here::here("data","dataves.csv")) %>%
   as_tibble() %>% 
   rename(long = decimal_longitude,
          lat = decimal_latitude) %>% 
+  # convert to sf object- spatially enabled using coordinates and crs
   st_as_sf(coords = c("long", "lat"), crs = 4326)
   
 ```
 
 ### 2. View class and geometry type
+```{r}
+# Check the class of vector objects
+class(ecoregions)
+class(roads)
+class(birds)
+ 
+# Check geometry of each object- use unique to display different values once
+# multipolygon
+unique(st_geometry_type(ecoregions))
+
+# linestring
+unique(st_geometry_type(roads))
+
+# point
+unique(st_geometry_type(birds))
+```
+
+### 3. Select a macro ecoregion of interest
+```{r}
+# Check ecoregion options 
+unique(ecoregions$N1_MacroBi)
+
+# Filter to Andean region
+andean <- ecoregions %>% 
+  filter(N1_MacroBi == "Andean")
+
+# Plot the subregion using tmap
+tm_shape(andean) +
+  tm_polygons() +
+  tm_title("Andean Region of Colombia")
+```
+
+### 4. Coordinate reference system (CRS)
+```{r}
+# Check CRS and units
+st_crs(ecoregions)
+st_crs(roads)
+st_crs(birds)
+
+st_crs(ecoregions)$units
+st_crs(roads)$units
+st_crs(birds)$units
+```
+
+```{r}
+# Remove CRS of an object to disable spatial features
+bird_st_coords <- birds %>% 
+  dplyr::mutate(lon = st_coordinates(.)[,1], # dot is df, st_coord finds geometry column
+                lat = st_coordinates(.)[,2]) %>% 
+  st_drop_geometry() # Remove geometry column
+
+# Convert long and lat into geometry again
+birds_sf <- bird_st_coords %>% 
+  st_as_sf(coords = c("lon", "lat"), crs = 4326)
+```
+
+### 5. Make a map
+```{r}
+# Check that CRS of ecoregions and roads datasets match
+st_crs(ecoregions) == st_crs(roads)
+
+# Transform CRS of birds dataset using st_transform() to match
+birds <- st_transform(birds_sf, st_crs(ecoregions))
+
+# Check that all CRS match
+st_crs(roads) == st_crs(birds)
+
+# Make a map using `tmap`
+tm_shape(ecoregions) +
+  tm_polygons() +
+tm_shape(roads) +
+  tm_lines() +
+tm_shape(birds) +
+  tm_dots() +
+  tm_title("Colombia ecoregions, roads, \nand bird observations")
+```
+
