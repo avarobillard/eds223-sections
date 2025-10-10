@@ -1,0 +1,39 @@
+---
+title: "Week 2: Discussion Section"
+format: html
+---
+### Working with multiple vector types
+
+- Use st_read() to read multiple vector data types
+- Retrieve the CRS of a vector object with st_crs()
+- Transform CRS and match across all vector data types with st_transform()
+- Perform dplyr attribute manipulations on sf data
+
+### 1. Get started
+```{r}
+#| message: False
+# Load packages
+library(tidyverse)
+library(sf)
+library(tmap)
+```
+
+```{r}
+#| message: False
+# Read in data for Colombia's ecoregions, roads, and bird observations
+
+# Use st_read for spatial .shp files
+ecoregions <- st_read(here::here("data","Colombia", "Colombia.shp"))
+  
+roads <- st_read(here::here("data","RDLINE_colombia", "RDLINE_colombia.shp"))
+
+# Use read_csv for csv files
+birds <- read_csv(here::here("data","dataves.csv")) %>% 
+  as_tibble() %>% 
+  rename(long = decimal_longitude,
+         lat = decimal_latitude) %>% 
+  st_as_sf(coords = c("long", "lat"), crs = 4326)
+  
+```
+
+### 2. View class and geometry type
