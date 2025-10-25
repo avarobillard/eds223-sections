@@ -65,13 +65,14 @@ map2
 ## Explore NDVI and NDWI at Zion National Park
 ```{r}
 # Apply scale factor and offset for all Landsat grid cells
-scale_factor <- 0.0000275
-offset <- -0.2
+scale_factor <- 0.0001
+offset <- 0
 
 scale_function <- function(x) {
   x * scale_factor + offset
 }
 
+# Apply scale function to all landsat layers
 landsat_scaled <- app(landsat, fun = scale_function)
 ```
 
@@ -81,6 +82,58 @@ ndvi_function <- function(nir, red) {
   (nir - red) / (nir + red)
 }
 
-#zion_ndvi <- app(landsat, fun = ndvi_function)
+# Apply function to layers 4 and 3
+ndvi_rast <- lapp(landsat_scaled[[c(4,3)]], fun = ndvi_function)
+
+# Visualize raster
+plot(ndvi_rast,
+     main = "Zion National Park NDVI")
+```
+
+```{r}
+# Calculate NDWI 
+ndwi_function <- function(green, nir) {
+  (green - nir) / (green + nir)
+}
+
+# Apply function to layers 2 and 4
+ndwi_rast <- lapp(landsat_scaled[[c(2,4)]], fun = ndwi_function)
+
+# Visualize raster
+plot(ndwi_rast,
+     main = "Zion National Park NDWI")
+```
+```{r}
+# Combine rasters and visualize
+combine <- c(ndvi_rast, ndwi_rast)
+
+plot(combine, main = c("NDVI", "NDWI"))
+```
+```{r}
+# Calculate correlation between raster layers
+terra::layerCor(combine, fun = cor)
+```
+
+4. Change resolution of elevation at Zion National Park
+```{r}
+plot(srtm)
+```
+```{r}
+# Create empty template based on extent of srtm
+rast_template <- terra::rast(terra::ext(srtm), res = 0.01)
+
+# Resampling methods
+srtm_resample1 <- terra::resample(srtm, y = rast_template, method = 'bilinear')
+srtm_resample2 <- terra::resample(srtm, y = rast_template, method = "near")
+srtm_resample3 <- terra::resample(srtm, y = rast_template, method = "cubic")
+srtm_resample4 <- terra::resample(srtm, y = rast_template, method = "cubicspline")
+srtm_resample5 <- terra::resample(srtm, y = rast_template, method = "lanczos")
+```
+
+```{r}
+srtm_resample_all <- c(srtm_resample1, srtm_resample2, srtm_resample3, srtm_resample4, srtm_resample5)
+labs <- c("Bilinear", "Near", "Cubic", "Cubic Spline", "Lanczos")
+
+plot(srtm_resample_all, main = labs)
 ```
 
