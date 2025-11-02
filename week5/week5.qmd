@@ -1,0 +1,81 @@
+---
+title: "Week 5"
+format: html
+---
+
+## Practice raster operations with vectors
+```{r}
+# Load packages
+library(tidyverse)
+library(sf)
+library(terra)
+library(spData)
+```
+
+```{r}
+# Load data
+nz_height <- nz_height
+grain <- terra::rast(system.file("raster/grain.tif", package = "spData"))
+```
+
+High elevation points in New Zealand/Aotearoa
+```{r}
+# Subset points higher than 3100 meters in nz_height
+high_points <- nz_height %>% 
+  filter(elevation > 3100)
+
+# Create template raster with same extent and CRS as high_points
+nz_template <- rast(ext(high_points),
+                  resolution = 3000,
+                  crs = crs(high_points))
+
+# Count number of highest points in each grid cell
+nz_raster <- rasterize(high_points, nz_template, # convert vector points to raster data
+                       fun = "length") # 'length' returns a count per cell
+
+plot(nz_raster, main = "Number of elevation points > 3100 in each grid cell")
+plot(st_geometry(high_points), add = TRUE) # also plot points
+```
+```{r}
+# Find maximum elevation in each grid cell
+nz_raster2 <- rasterize(high_points, nz_template,
+                        fun = max) # 'max' returns max elevation value per cell
+
+plot(nz_raster2, main = "Maximum elevation in each grid cell ")
+plot(st_geometry(high_points), add = TRUE)
+```
+```{r}
+# Aggregate raster that counts highest points to reduce geographic resolution
+nz_raster_low <- aggregate(nz_raster, 
+                           fact = 2, # Reduce resolution by combining 2 cells in each direction into larger cells
+                           fun = sum, na.rm = TRUE) # Sum values of all cells for resulting elevation value
+
+# Convert resolution back to original 3kmx3km resolution
+nz_resample <- resample(nz_raster_low, nz_raster)
+
+plots <- c(nz_raster, nz_resample)
+labs <- c("Original 3 x 3 km", "Resample 3 x 3 km")
+plot(plots, main = labs)
+```
+```{r}
+plot(nz_raster_low, main = "Resample 6 x 6 km")
+```
+Vectorize grain raster- polygonize grain and filter to only keep squares that represent clay
+```{r}
+# Convert raster data to polygon vector data
+grain_poly <- as.polygons(grain) %>% 
+  st_as_sf()
+
+plot(grain, main = "Grain (Raster)")
+```
+```{r}
+plot(grain_poly, main = "Grain (Vector)")
+```
+```{r}
+# Subset polygons to only clay
+clay <- grain_poly %>% 
+  dplyr::filter(grain == "clay")
+
+plot(clay, main = "Clay")
+```
+
